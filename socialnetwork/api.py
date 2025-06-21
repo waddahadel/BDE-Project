@@ -128,7 +128,24 @@ def submit_post(
 
 
     #########################
-    # add your code here
+    
+    # T1 – not to publish posts that have an expertise area that is contained
+    # in the user fame  profile and marked negative there.
+    
+    # 1) Collect the expertise‑area objects detected for the post
+    detected_areas = [epa["expertise_area"] for epa in _expertise_areas]
+
+    # 2) Look up whether the author’s fame level in *any* of those areas
+    #    is negative (numeric_value < 0)
+    has_negative_fame = Fame.objects.filter(
+        user=user,
+        expertise_area__in=detected_areas,
+        fame_level__numeric_value__lt=0,
+    ).exists()
+
+    # 3) If negative fame is found, force the post to stay unpublished
+    if has_negative_fame:
+        post.published = False
     #########################
 
     post.save()
