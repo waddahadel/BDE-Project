@@ -148,6 +148,41 @@ def submit_post(
         post.published = False
     #########################
 
+    # T2 when users submit a negative truth rating
+    # T2a when the expertise area is in the user fame profile, lower the fame level
+    # T2b when the expertise area is not in the user fame profile, add an entry "Confuser" in fame profile
+    # T2c when cannot lower extisting fame level, ban user.
+
+    # find all expertise areas with negative truth ratings
+    negative_areas = [negative_post for negative_post in _expertise_areas if negative_post["truth_rating"] < 0]
+    for negative_area_info in negative_areas:
+        area = negative_area_info["expertise_area"]
+        try:
+            fame_entry = Fame.objects.get(user=user, expertise_area=area)
+            current_level = fame_entry.fame_level
+            lower_levels = FameLevels.objects.filter(
+            numeric_value__lt=current_level.numeric_value
+            ).order_by("-numeric_value")
+            # T2a:if lower level exist, lower the fame level
+            if lower_levels.exists():
+                fame_entry.fame_level = lower_levels.first()
+                fame_entry.save()
+            else:
+                # T2c:if there isn't a lower level, ban the user
+                user.is_active = False
+                user.save()
+                Posts.objects.filter(author=user).update(published=False)
+                redirect_to_logout = True
+        # T2b: if the expertise area is not in the user fame profile, add an entry "Confuser"
+        except Fame.DoesNotExist:
+            confuser_level = FameLevels.objects.filter(name__iexact="Confuser").first()
+            if confuser_level:
+                Fame.objects.create(
+                    user=user,
+                    expertise_area=area,
+                    fame_level=confuser_level,
+                )
+    #####################
     post.save()
 
     return (
