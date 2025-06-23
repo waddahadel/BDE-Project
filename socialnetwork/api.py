@@ -20,7 +20,6 @@ def _get_social_network_user(user) -> SocialNetworkUsers:
 def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, published=True, community_mode=False):
     """Get the timeline of the user. Assumes that the user is authenticated."""
 
-    if community_mode:
         # T4
         # in community mode, posts of communities are displayed if ALL of the following criteria are met:
         # 1. the author of the post is a member of the community
@@ -28,10 +27,19 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 3. the post contains the community’s expertise area
         # 4. the post is published or the user is the author
 
-        pass
-        #########################
-        # add your code here
-        #########################
+        
+    if community_mode:
+        user_communities = user.communities.all() # requirement 2 implicitly satisfied from this
+        if not user_communities:
+            return Posts.objects.none()
+        # Filter: Same expertise area must appear in user's communities, 
+        # author's communities, and post's expertise areas
+        posts = Posts.objects.filter(
+            expertise_area_and_truth_ratings__in=user_communities, # requirement 3
+            author__communities__id=F('expertise_area_and_truth_ratings__id'), # requirement 1
+        ).filter(
+            Q(published=published) | Q(author=user) # requirement 4
+        ).distinct().order_by("-submitted")
 
     else:
         # in standard mode, posts of followed users are displayed
@@ -185,6 +193,31 @@ def submit_post(
                     fame_level=confuser_level,
                 )
     #####################
+
+
+    # Task T4: Remove user from communities if fame level drops below Super Pro
+    # Get user's current communities
+    user_communities = user.communities.all()
+    # Find the "Super Pro" fame level, since it might not be 100 always
+    super_pro_level = FameLevels.objects.filter(name__iexact="Super Pro").first()
+    
+    if super_pro_level:
+        for expertise_area_dict in _expertise_areas:
+            expertise_area = expertise_area_dict["expertise_area"]
+            # If the expertise area matches a community the user is in
+            if expertise_area in user_communities:
+                # Get user's fame level for this expertise area
+                fame_profile = Fame.objects.filter(
+                    user=user, expertise_area=expertise_area
+                ).first()
+                
+                if fame_profile: # if level is lower than Super Pro, remove from community
+                    if fame_profile.fame_level.numeric_value < super_pro_level.numeric_value:
+                        user.communities.remove(expertise_area)
+                    
+                         
+                        
+    user.save()
     post.save()
 
     return (
@@ -255,15 +288,25 @@ def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Join a specified community. Note that this method does not check whether the user is eligible for joining the
     community.
     """
-    pass
-    #########################
-    # add your code here
-    #########################
+
+    if community not in user.communities.all():
+        user.communities.add(community)
+        user.save()
 
 
 
 def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Leave a specified community."""
+
+    if community in user.communities.all():
+        user.communities.remove(community)
+        user.save()
+
+
+def similar_users(user: SocialNetworkUsers):
+    """Compute the similarity of user with all other users. The method returns a QuerySet of FameUsers annotated
+    with an additional field 'similarity'. Sort the result in descending order according to 'similarity', in case
+    there is a tie, within that tie sort by date_joined (most recent first)"""
     pass
     #########################
     # add your code here
