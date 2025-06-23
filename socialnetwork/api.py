@@ -162,18 +162,19 @@ def submit_post(
         try:
             fame_entry = Fame.objects.get(user=user, expertise_area=area)
             current_level = fame_entry.fame_level
-            lower_level = current_level.get_next_lower_fame_level()
             # T2a:if lower level exist, lower the fame level
-            if lower_level:
+            try:
+                lower_level = current_level.get_next_lower_fame_level()
                 fame_entry.fame_level = lower_level
                 fame_entry.save()
-            else:
+            except ValueError:
                 # T2c:if there isn't a lower level, ban the user
                 user.is_active = False
                 user.is_banned = True
                 user.save()
                 Posts.objects.filter(author=user).update(published=False)
                 redirect_to_logout = True
+                    
         # T2b: if the expertise area is not in the user fame profile, add an entry "Confuser"
         except Fame.DoesNotExist:
             confuser_level = FameLevels.objects.filter(name__iexact="Confuser").first()
