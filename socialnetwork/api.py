@@ -160,16 +160,15 @@ def submit_post(
         try:
             fame_entry = Fame.objects.get(user=user, expertise_area=area)
             current_level = fame_entry.fame_level
-            lower_levels = FameLevels.objects.filter(
-            numeric_value__lt=current_level.numeric_value
-            ).order_by("-numeric_value")
+            lower_level = current_level.get_next_lower_fame_level()
             # T2a:if lower level exist, lower the fame level
-            if lower_levels.exists():
-                fame_entry.fame_level = lower_levels.first()
+            if lower_level:
+                fame_entry.fame_level = lower_level
                 fame_entry.save()
             else:
                 # T2c:if there isn't a lower level, ban the user
                 user.is_active = False
+                user.is_banned = True
                 user.save()
                 Posts.objects.filter(author=user).update(published=False)
                 redirect_to_logout = True
