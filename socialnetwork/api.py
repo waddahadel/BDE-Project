@@ -154,7 +154,9 @@ def submit_post(
     # T2c when cannot lower extisting fame level, ban user.
 
     # find all expertise areas with negative truth ratings
-    negative_areas = [negative_post for negative_post in _expertise_areas if negative_post["truth_rating"] < 0]
+    negative_areas = [negative_post for negative_post in _expertise_areas 
+                  if negative_post["truth_rating"] is not None 
+                  and negative_post["truth_rating"].numeric_value < 0]
     for negative_area_info in negative_areas:
         area = negative_area_info["expertise_area"]
         try:
