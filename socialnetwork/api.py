@@ -306,12 +306,14 @@ def bullshitters():
             "date_joined": user.date_joined,  # not part of the result format but it's used for breaking ties. will be removed later
         })
 
-    # Sort by fame value (ascending), then by date_joined (descending)
+    # we sort by fame value (ascending), then by date_joined (descending)
     for ea in result:
         result[ea].sort(key=lambda entry: (
             entry["fame_level_numeric"],
             -entry["date_joined"].timestamp()
         ))
+        for entry in result[ea]:
+            del entry["date_joined"]  #we remove the helper key
 
     return result
 
