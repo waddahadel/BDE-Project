@@ -1,3 +1,4 @@
+from collections import defaultdict
 from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, F, Prefetch
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
@@ -198,7 +199,7 @@ def submit_post(
     # Task T4: Remove user from communities if fame level drops below Super Pro
     # Get user's current communities
     user_communities = user.communities.all()
-    # Find the "Super Pro" fame level, since it might not be 100 always
+    # Find the "Super Pro" fame level
     super_pro_level = FameLevels.objects.filter(name__iexact="Super Pro").first()
     
     if super_pro_level:
@@ -275,10 +276,44 @@ def bullshitters():
     users with the lowest fame are shown first, in case there is a tie, within that tie sort by date_joined
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
-    pass
-    #########################
-    # add your code here
-    #########################
+    # we initialize the resulting dictionary
+
+    result = {}
+
+    # collect all  fame instances with negative fame numeric value 
+    
+    negative_fame_entries = Fame.objects.filter(
+        fame_level__numeric_value__lt=0
+    ).select_related("user", "expertise_area", "fame_level")
+
+    # loop over the instances and construct the unsorted result dictionary.
+
+    for fame_entry in negative_fame_entries:
+        expertise_area = fame_entry.expertise_area  
+        user = fame_entry.user
+        numeric_fame_value = fame_entry.fame_level.numeric_value
+
+        # we put an empty list as a placeholder to begin constructing the result,as expertise areas as keys
+        
+        if expertise_area not in result:
+            result[expertise_area] = []
+
+        # we append a dictionary instance with the relavant data to the list corresponding to the key (the current expertise area we are dealing with)
+
+        result[expertise_area].append({
+            "user": user,
+            "fame_level_numeric": numeric_fame_value,
+            "date_joined": user.date_joined,  # not part of the result format but it's used for breaking ties. will be removed later
+        })
+
+    # Sort by fame value (ascending), then by date_joined (descending)
+    for ea in result:
+        result[ea].sort(key=lambda entry: (
+            entry["fame_level_numeric"],
+            -entry["date_joined"].timestamp()
+        ))
+
+    return result
 
 
 
