@@ -2,7 +2,9 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
+from sympy import Q
 
+from fame.models import ExpertiseAreas, Fame, FameLevels
 from socialnetwork import api
 from socialnetwork.api import _get_social_network_user
 from socialnetwork.models import SocialNetworkUsers
@@ -19,11 +21,12 @@ def timeline(request):
     if 'community_mode' not in request.session:
         request.session['community_mode'] = False
 
-
     # get extra URL parameters:
     keyword = request.GET.get("search", "")
     published = request.GET.get("published", True)
     error = request.GET.get("error", None)
+    user = _get_social_network_user(request.user)
+    community_mode = request.session['community_mode']
 
     # if keyword is not empty, use search method of API:
     if keyword and keyword != "":
@@ -48,6 +51,11 @@ def timeline(request):
             "searchkeyword": "",
             "error": error,
             "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
+            "community_mode": community_mode,
+            "joined_communities": user.communities.all(),
+            "eligible_communities": ExpertiseAreas.objects.exclude(id__in=user.communities.all()).filter(
+            id__in=api.fame(user)[1].filter(fame_level__numeric_value__gte=100).values_list('expertise_area_id', flat=True)
+        ),
         }
 
     return render(request, "timeline.html", context=context)
@@ -97,17 +105,43 @@ def bullshitters(request):
 @require_http_methods(["POST"])
 @login_required
 def toggle_community_mode(request):
-    raise NotImplementedError("Not implemented yet")
+    # toggles the session-based community mode flag for the timeline view;
+    # if community mode is active, switches to standard mode and vice versa
+    request.session['community_mode'] = not request.session.get('community_mode', False)
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["POST"])
 @login_required
 def join_community(request):
-    raise NotImplementedError("Not implemented yet")
+    # get the currently logged-in social network user
+    user = _get_social_network_user(request.user)
+
+    # extract the community id from the form data (submitted via POST)
+    community_id = request.POST.get("community_id")
+
+    # retrieve the corresponding expertise area (community) object
+    community = ExpertiseAreas.objects.get(id=community_id)
+
+    # check if user has fame level of at least 100 (super pro or higher) in this area
+    fame_qs = api.fame(user)[1].filter(expertise_area=community, fame_level__numeric_value__gte=100)
+
+    # if the user is eligible (fame level >= 100), allow them to join the community
+    if fame_qs.exists():
+        api.join_community(user, community)
+
+    # redirect back to the timeline regardless of result
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["POST"])
 @login_required
 def leave_community(request):
-    raise NotImplementedError("Not implemented yet")
+    user = _get_social_network_user(request.user)
+    community_id = request.POST.get("community_id")
+    community = ExpertiseAreas.objects.get(id=community_id)
+    if community in user.communities.all():
+        api.leave_community(user, community)
+    return redirect(reverse("sn:timeline"))
+
 
 @require_http_methods(["GET"])
 @login_required
