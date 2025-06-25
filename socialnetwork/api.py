@@ -341,22 +341,68 @@ def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
 
 
 def similar_users(user: SocialNetworkUsers):
+    
     """Compute the similarity of user with all other users. The method returns a QuerySet of FameUsers annotated
     with an additional field 'similarity'. Sort the result in descending order according to 'similarity', in case
     there is a tie, within that tie sort by date_joined (most recent first)"""
-    pass
-    #########################
-    # add your code here
-    #########################
+
+    # we collect the user i's expertise areas  and fame level
+
+    user_fame_entries = Fame.objects.filter(user=user).select_related("expertise_area", "fame_level")
+    
+    # construct a dictionary (mapping) with the expertise area's  id as a key and the fame level as the value
+
+    user_fame_map = {
+        entry.expertise_area.id: entry.fame_level.numeric_value
+        for entry in user_fame_entries
+    }
+    
+    # if the map is empty (user i in question have no expertise areas) then just return an empty query set
+
+    if not user_fame_map:
+        return FameUsers.objects.none()
+    
+    # construct a set of the expertise areas id's of user i
+
+    Ei = set(user_fame_map.keys())
+    
+    # collect all other users who have fame in any of the user's expertise areas
+    other_users = FameUsers.objects.exclude(id=user.id).prefetch_related(
+        Prefetch('fame_set', 
+                queryset=Fame.objects.filter(expertise_area__in=Ei).select_related('fame_level', 'expertise_area'),
+                to_attr='relevant_fame')
+    )
+    
+    # then we calculate the similarity for each user from the formula given in the task description
+
+    users_with_similarity = []
+    for uj in other_users:
+        agreement_count = 0
+        for fame in uj.relevant_fame:
+            fame_ui = user_fame_map[fame.expertise_area.id]
+            fame_uj = fame.fame_level.numeric_value
+            if abs(fame_ui - fame_uj) <= 100:
+                agreement_count += 1
+        
+        if agreement_count > 0:
+            similarity = agreement_count / len(Ei)
+            users_with_similarity.append((uj, similarity))
+    
+    # sort by similarity descending, then by date_joined descending
+    users_with_similarity.sort(key=lambda x: (-x[1], -x[0].date_joined.timestamp()))
+    
+    # we create a list of user IDs in the correct order
+    user_ids = [u[0].id for u in users_with_similarity]
+    
+    # then return a QuerySet with annotated similarity, ordered correctly
+    return FameUsers.objects.filter(id__in=user_ids).annotate(
+        similarity=Case(
+            *[When(id=uid, then=Value(sim)) for uid, sim in 
+              zip(user_ids, [u[1] for u in users_with_similarity])],
+            output_field=FloatField()
+        )
+    ).order_by('-similarity', '-date_joined')
 
 
 
-def similar_users(user: SocialNetworkUsers):
-    """Compute the similarity of user with all other users. The method returns a QuerySet of FameUsers annotated
-    with an additional field 'similarity'. Sort the result in descending order according to 'similarity', in case
-    there is a tie, within that tie sort by date_joined (most recent first)"""
-    pass
-    #########################
-    # add your code here
-    #########################
 
