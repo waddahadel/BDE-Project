@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Bullshitters{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Bullshitters by Expertise Area</h1>
+
+    {% if bullshitters %}
+        {% for block in bullshitters %}
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    {{ block.expertise_area }}
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for entry in block.entries %}
+                        <li class="list-group-item">
+                            <strong>{{ entry.user.first_name }} {{ entry.user.last_name }}</strong>
+                           <!--
+                            I thought it was better to ommit the email from the result.. 
+                            (<code>{{ entry.user.email }}</code>)--> –
+                            Fame Level: <span class="text-danger">{{ entry.fame_level_numeric }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">No bullshitters found.</div>
+    {% endif %}
+</div>
+{% endblock %}

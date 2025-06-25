@@ -74,7 +74,25 @@ def unfollow(request):
 @require_http_methods(["GET"])
 @login_required
 def bullshitters(request):
-    raise NotImplementedError("Not implemented yet")
+    user = _get_social_network_user(request.user)
+
+    # we call the bullshitters function in the api to get the bullshitters dictionary
+    bs_dict = api.bullshitters()
+
+    # now we transform the dictionary into a list of 
+    bs_list = [
+        {
+            "expertise_area": expertise_area_label,
+            "entries": entries
+        }
+        for expertise_area_label, entries in bs_dict.items()
+    ]
+
+    
+
+    # we render the bullshitters html file..
+
+    return render(request, "bullshitters.html", {"bullshitters": bs_list})
 
 @require_http_methods(["POST"])
 @login_required
