@@ -136,4 +136,6 @@ def leave_community(request):
 @require_http_methods(["GET"])
 @login_required
 def similar_users(request):
-    raise NotImplementedError("Not implemented yet")
+    user = _get_social_network_user(request.user)
+    similar = api.similar_users(user) 
+    return render(request, "similar_users.html", {"similar_users": similar})

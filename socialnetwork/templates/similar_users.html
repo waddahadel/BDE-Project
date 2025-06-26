@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Similar Users to me{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <h2>Similar Users to me</h2>
+    {% if similar_users %}
+        <ul class="list-group">
+            {% for user in similar_users %}
+                <li class="list-group-item">
+                    <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                    <!-- I think it would be better to not include the users emails but this line is just here optionally : <br>
+                    Email: {{ user.email }} 
+                    -->
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">No similar users found.</p>
+    {% endif %}
+</div>
+{% endblock %}
