@@ -1,7 +1,6 @@
 from django.urls import path
 
-from socialnetwork.api import join_community, leave_community
-from socialnetwork.views.html import bullshitters, timeline, toggle_community_mode
+from socialnetwork.views.html import bullshitters, timeline, toggle_community_mode,join_community,leave_community
 from socialnetwork.views.html import follow
 from socialnetwork.views.html import unfollow
 from socialnetwork.views.rest import PostsListApiView

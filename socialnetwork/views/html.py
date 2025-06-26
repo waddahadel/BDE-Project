@@ -14,49 +14,39 @@ from socialnetwork.serializers import PostsSerializer
 @require_http_methods(["GET"])
 @login_required
 def timeline(request):
-    # using the serializer to get the data, then use JSON in the template!
-    # avoids having to do the same thing twice
-
     # initialize community mode to False the first time in the session
     if 'community_mode' not in request.session:
         request.session['community_mode'] = False
 
-    # get extra URL parameters:
+    # get extra URL parameters
     keyword = request.GET.get("search", "")
     published = request.GET.get("published", True)
     error = request.GET.get("error", None)
+
     user = _get_social_network_user(request.user)
     community_mode = request.session['community_mode']
 
-    # if keyword is not empty, use search method of API:
+    # determine post queryset
     if keyword and keyword != "":
-        context = {
-            "posts": PostsSerializer(
-                api.search(keyword, published=published), many=True
-            ).data,
-            "searchkeyword": keyword,
-            "error": error,
-            "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
-        }
-    else:  # otherwise, use timeline method of API:
+        posts = api.search(keyword, published=published)
+    else:
+        posts = api.timeline(user, published=published)
+        if community_mode:
+            # filter to only include posts from users who share at least one community
+            community_ids = user.communities.values_list("id", flat=True)
+            posts = posts.filter(author__communities__id__in=community_ids).distinct()
 
-        context = {
-            "posts": PostsSerializer(
-                api.timeline(
-                    _get_social_network_user(request.user),
-                    published=published,
-                ),
-                many=True,
-            ).data,
-            "searchkeyword": "",
-            "error": error,
-            "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
-            "community_mode": community_mode,
-            "joined_communities": user.communities.all(),
-            "eligible_communities": ExpertiseAreas.objects.exclude(id__in=user.communities.all()).filter(
+    context = {
+        "posts": PostsSerializer(posts, many=True).data,
+        "searchkeyword": keyword,
+        "error": error,
+        "followers": list(api.follows(user).values_list('id', flat=True)),
+        "community_mode": community_mode,
+        "joined_communities": user.communities.all(),
+        "eligible_communities": ExpertiseAreas.objects.exclude(id__in=user.communities.all()).filter(
             id__in=api.fame(user)[1].filter(fame_level__numeric_value__gte=100).values_list('expertise_area_id', flat=True)
         ),
-        }
+    }
 
     return render(request, "timeline.html", context=context)
 
