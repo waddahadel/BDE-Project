@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     "fame",
     "socialnetwork",
     "rest_framework",
-    "django_extensions",
 ]
 
 MIDDLEWARE = [

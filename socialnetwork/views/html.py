@@ -2,7 +2,6 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
-from sympy import Q
 
 from fame.models import ExpertiseAreas, Fame, FameLevels
 from socialnetwork import api
