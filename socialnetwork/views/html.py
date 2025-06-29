@@ -121,6 +121,8 @@ def join_community(request):
     # redirect back to the timeline regardless of result
     return redirect(reverse("sn:timeline"))
 
+# allows the logged-in user to leave a specific community if they are a member.
+# the community is identified via POST data and the user is redirected back to the timeline.
 @require_http_methods(["POST"])
 @login_required
 def leave_community(request):
@@ -131,7 +133,8 @@ def leave_community(request):
         api.leave_community(user, community)
     return redirect(reverse("sn:timeline"))
 
-
+# displays users similar to the current user.
+# the results are passed to the 'similar_users.html' template for rendering.
 @require_http_methods(["GET"])
 @login_required
 def similar_users(request):

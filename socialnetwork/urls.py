@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/follow", follow, name="follow"),
     path("api/unfollow", unfollow, name="unfollow"),
 
+      # Routes added for Task 6–8
     # T6
     path("html/bullshitters/", bullshitters, name="bullshitters"),
 
